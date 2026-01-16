@@ -10,60 +10,73 @@
 # Description: OpenWrt DIY script part 2 (After Update feeds)
 #
 
+rm -rf feeds/packages2/net/xray-core
+rm -rf feeds/packages2/net/v2ray-geodata
+rm -rf feeds/packages2/net/sing-box
+rm -rf feeds/packages2/net/chinadns-ng
+rm -rf feeds/packages2/net/dns2socks
+rm -rf feeds/packages2/net/dns2tcp
+rm -rf feeds/packages2/net/microsocks
+rm -rf feeds/packages/net/shadowsocks-libev
+cp -r feeds/packages2/lang/rust feeds/packages/lang
+cp -r feeds/PWpackages/xray-core feeds/packages2/net
+cp -r feeds/PWpackages/v2ray-geodata feeds/packages2/net
+cp -r feeds/PWpackages/sing-box feeds/packages2/net
+cp -r feeds/PWpackages/chinadns-ng feeds/packages2/net
+cp -r feeds/PWpackages/dns2socks feeds/packages2/net
+cp -r feeds/helloworld/dns2tcp feeds/packages2/net
+cp -r feeds/PWpackages/microsocks feeds/packages2/net
+cp -r feeds/PWpackages/shadowsocks-libev feeds/packages/net
+
+# 修改naiveproxy编译源码以支持mips_siflower
+# 1) 先删除（如果有）之前误插入的 mips_siflower 映射两行，避免重复
+sed -i '/else ifeq (\$(ARCH_PREBUILT),mips_siflower)/,+1 d' \
+feeds/PWpackages/naiveproxy/Makefile
+
+# 2) 把 mips_siflower -> mipsel_24kc-static 正确插到 “ARCH_PREBUILT:=riscv64” 这一行之后
+#    （注意：锚点是赋值行，而不是 “riscv64_riscv64)” 的条件行）
+sed -i '/^[[:space:]]*ARCH_PREBUILT:=riscv64[[:space:]]*$/a\
+else ifeq ($(ARCH_PREBUILT),mips_siflower)\
+  ARCH_PREBUILT:=mipsel_24kc-static' \
+feeds/PWpackages/naiveproxy/Makefile
+
+# 3) 修复并收尾 PKG_HASH 分支
+sed -i '/^else ifeq (\$(ARCH_PREBUILT),x86_64)/,/^endif/ c\
+else ifeq ($(ARCH_PREBUILT),x86_64)\n  PKG_HASH:=5681e13c833757cfb5769755fd93d1906c47448af190585067bde9de590bdb2e\nelse ifeq ($(ARCH_PREBUILT),mipsel_24kc-static)\n  PKG_HASH:=0ca95c162104c327f3f34be3f291445b098c44c5e7763206c13730e7974d7a34\nelse\n  PKG_HASH:=dummy\nendif' \
+feeds/PWpackages/naiveproxy/Makefile
+
+# 4) （推荐）让解包动作使用 $(PKG_SOURCE)，避免文件名不同步
+sed -i 's|-xJf $(DL_DIR)/naiveproxy-v$(PKG_VERSION)-$(PKG_RELEASE)-openwrt-$(ARCH_PREBUILT).tar.xz|-xJf $(DL_DIR)/$(PKG_SOURCE)|' \
+feeds/PWpackages/naiveproxy/Makefile
+
 rm -rf feeds/packages/devel/diffutils
 rm -rf feeds/packages/utils/jq
-rm -rf feeds/packages/net/zerotier
-git clone https://github.com/coolsnowwolf/packages.git
-cp -r packages/devel/diffutils feeds/packages/devel
-cp -r packages/utils/jq feeds/packages/utils
-cp -r packages/net/zerotier feeds/packages/net
-rm -rf packages
+rm -rf feeds/gl_feed_common/zerotier
+rm -rf feeds/gl_feed_1806/haproxy
+cp -r feeds/packages2/devel/diffutils feeds/packages/devel
+cp -r feeds/packages2/utils/jq feeds/packages/utils
+cp -r feeds/packages2/net/zerotier feeds/gl_feed_common
+cp -r feeds/packages2/net/haproxy feeds/gl_feed_1806
+
+# haproxy修改依赖支持到lua5.4
+sed -i -E \
+  -e 's/\+liblua5\.3/\+liblua5\.4/g' \
+  -e 's/LUA_LIB_NAME="?lua5\.3"?/LUA_LIB_NAME="lua5.4"/g' \
+  -e 's|/include/lua5\.3|/include/lua5.4|g' \
+  feeds/gl_feed_1806/haproxy/Makefile
 
 # 修改golang源码以编译xray1.8.8+版本
-rm -rf feeds/packages/lang/golang
-rm -rf feeds/packages2/lang/golang
-git clone https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages/lang/golang
-git clone https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages2/lang/golang
-sed -i '/-linkmode external \\/d' feeds/packages/lang/golang/golang-package.mk
-sed -i '/-linkmode external \\/d' feeds/packages2/lang/golang/golang-package.mk
+rm -rf feeds/gl_feed_common/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/gl_feed_common/golang
+sed -i '/-linkmode external \\/d' feeds/gl_feed_common/golang/golang-package.mk
 
-rm -rf feeds/packages2/multimedia/aliyundrive-webdav
-rm -rf feeds/luci2/applications/luci-app-aliyundrive-webdav
-git clone https://github.com/messense/aliyundrive-webdav.git
-cp -r aliyundrive-webdav/openwrt/aliyundrive-webdav feeds/packages2/multimedia
-cp -r aliyundrive-webdav/openwrt/luci-app-aliyundrive-webdav feeds/luci2/applications
+# 增加阿里云盘WebDAV 及其 LuCI
+set -euo pipefail
+rm -rf feeds/packages2/multimedia/aliyundrive-webdav feeds/luci2/applications/luci-app-aliyundrive-webdav
+git clone --depth=1 https://github.com/messense/aliyundrive-webdav.git aliyundrive-webdav
+cp -a aliyundrive-webdav/openwrt/aliyundrive-webdav feeds/packages2/multimedia
+cp -a aliyundrive-webdav/openwrt/luci-app-aliyundrive-webdav feeds/luci2/applications
 rm -rf aliyundrive-webdav
-
-# 修改frp版本为官网最新v0.60.0 https://github.com/fatedier/frp 格式：https://codeload.github.com/fatedier/frp/tar.gz/v${PKG_VERSION}?
-sed -i 's/PKG_VERSION:=0.53.2/PKG_VERSION:=0.60.0/' feeds/packages2/net/frp/Makefile
-sed -i 's/PKG_HASH:=ff2a4f04e7732bc77730304e48f97fdd062be2b142ae34c518ab9b9d7a3b32ec/PKG_HASH:=8feaf56fc3f583a51a59afcab1676f4ccd39c1d16ece08d849f8dc5c1e5bff55/' feeds/packages2/net/frp/Makefile
-
-# 拉取最后能编译的shadowsocks-rust
-wget https://codeload.github.com/fw876/helloworld/zip/28504024db649b7542347771704abc33c3b1ddc8 -O helloworld.zip
-unzip helloworld.zip
-rm -rf feeds/helloworld/shadowsocks-rust
-cp -r helloworld-28504024db649b7542347771704abc33c3b1ddc8/shadowsocks-rust feeds/helloworld
-rm -rf feeds/PWpackages/shadowsocks-rust
-cp -r helloworld-28504024db649b7542347771704abc33c3b1ddc8/shadowsocks-rust feeds/PWpackages
-rm -rf helloworld.zip helloworld-28504024db649b7542347771704abc33c3b1ddc8
-
-# 拉取最后能编译的shadowsocksr-libev
-wget https://codeload.github.com/fw876/helloworld/zip/ea2a48dd6a30450ab84079a0c0a943cab86e29dc -O helloworld.zip
-unzip helloworld.zip
-rm -rf feeds/helloworld/shadowsocksr-libev
-cp -r helloworld-ea2a48dd6a30450ab84079a0c0a943cab86e29dc/shadowsocksr-libev feeds/helloworld
-sed -i '/DEPENDS:=+libev +libsodium +libopenssl +libpthread +libpcre +libudns +zlib +libopenssl-legacy/s/ +libopenssl-legacy//' feeds/helloworld/shadowsocksr-libev/Makefile
-rm -rf feeds/PWpackages/shadowsocksr-libev
-cp -r feeds/helloworld/shadowsocksr-libev feeds/PWpackages
-rm -rf helloworld.zip helloworld-ea2a48dd6a30450ab84079a0c0a943cab86e29dc
-
-# 拉取最后能编译的dns2tcp
-rm -rf feeds/helloworld/dns2tcp
-rm -rf feeds/PWpackages/dns2tcp
-git clone https://github.com/sbwml/openwrt_helloworld
-cp -r openwrt_helloworld/dns2tcp feeds/helloworld
-cp -r openwrt_helloworld/dns2tcp feeds/PWpackages
-rm -rf openwrt_helloworld
 
 git clone https://github.com/coolsnowwolf/lede.git
 cp -r lede/tools/ninja tools
@@ -74,6 +87,20 @@ git clone https://github.com/kongfl888/luci-app-adguardhome.git package/luci-app
 
 rm -rf package/libs/openssl
 rm -rf package/libs/ustream-ssl
-#wget 'https://github.com/201821143044/Actions-GL.iNet-OpenWrt/raw/main/myfiles/openssl.zip' --no-check-certificate && unzip -o openssl.zip && rm -f openssl.zip
 wget 'https://github.com/wekingchen/Actions-SFT1200/raw/main/libs.zip' --no-check-certificate && unzip -o libs.zip && rm -f libs.zip
 wget https://github.com/wekingchen/Actions-SFT1200/raw/main/board-2.bin.ddcec9efd245da9365c474f513a855a55f3ac7fe -P dl/
+
+# 修复 host ncurses 静态库 relocation 错误
+sed -i '/^PKG_BUILD_DEPENDS:=ncurses\/host/a HOST_CFLAGS += -fPIC' package/libs/ncurses/Makefile
+
+# 清理老的 hostpkg ncurses —— 用内置目标更安全，且不存在也不会失败
+make package/ncurses/host/clean || true
+
+# 强制只用动态库 —— 目录不存在时直接跳过，避免 find 报错
+if [ -d staging_dir/hostpkg/lib ]; then
+  find staging_dir/hostpkg/lib -type f -name 'libncurses.a' -delete || true
+  find staging_dir/hostpkg/lib -type f -name 'libpanel.a'   -delete || true
+fi
+
+# 运行时库搜索路径（LD_LIBRARY_PATH 可能为空，给默认值）
+export LD_LIBRARY_PATH="staging_dir/hostpkg/lib:${LD_LIBRARY_PATH:-}"
