@@ -19,14 +19,14 @@ rm -rf feeds/packages2/net/dns2tcp
 rm -rf feeds/packages2/net/microsocks
 rm -rf feeds/packages/net/shadowsocks-libev
 cp -r feeds/packages2/lang/rust feeds/packages/lang
-cp -r feeds/PWpackages/xray-core feeds/packages2/net
-cp -r feeds/PWpackages/v2ray-geodata feeds/packages2/net
-cp -r feeds/PWpackages/sing-box feeds/packages2/net
-cp -r feeds/PWpackages/chinadns-ng feeds/packages2/net
-cp -r feeds/PWpackages/dns2socks feeds/packages2/net
-cp -r feeds/helloworld/dns2tcp feeds/packages2/net
-cp -r feeds/PWpackages/microsocks feeds/packages2/net
-cp -r feeds/PWpackages/shadowsocks-libev feeds/packages/net
+##cp -r feeds/PWpackages/xray-core feeds/packages2/net
+##cp -r feeds/PWpackages/v2ray-geodata feeds/packages2/net
+##cp -r feeds/PWpackages/sing-box feeds/packages2/net
+##cp -r feeds/PWpackages/chinadns-ng feeds/packages2/net
+##cp -r feeds/PWpackages/dns2socks feeds/packages2/net
+##cp -r feeds/helloworld/dns2tcp feeds/packages2/net
+##cp -r feeds/PWpackages/microsocks feeds/packages2/net
+##cp -r feeds/PWpackages/shadowsocks-libev feeds/packages/net
 
 # 修改naiveproxy编译源码以支持mips_siflower
 # 1) 先删除（如果有）之前误插入的 mips_siflower 映射两行，避免重复
@@ -56,7 +56,7 @@ rm -rf feeds/gl_feed_1806/haproxy
 cp -r feeds/packages2/devel/diffutils feeds/packages/devel
 cp -r feeds/packages2/utils/jq feeds/packages/utils
 cp -r feeds/packages2/net/zerotier feeds/gl_feed_common
-cp -r feeds/packages2/net/haproxy feeds/gl_feed_1806
+##cp -r feeds/packages2/net/haproxy feeds/gl_feed_1806
 
 # haproxy修改依赖支持到lua5.4
 sed -i -E \
