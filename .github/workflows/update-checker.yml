@@ -11,7 +11,9 @@
 
 name: Update Checker
 
-
+env:
+  REPO_URL: https://github.com/Openwrt-Passwall/openwrt-passwall-packages
+  REPO_BRANCH: main
 
 on:
   workflow_dispatch:
